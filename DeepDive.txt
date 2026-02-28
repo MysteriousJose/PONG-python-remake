@@ -1,0 +1,238 @@
+﻿# PONG Architecture Deep Dive (pong.py)
+
+Scope: This document covers only `pong.py` and uses approximate line anchors to help you find code quickly.
+Audience: This is written for a beginner/intermediate Python learner who wants to keep building this exact project.
+
+## 1) Title and Scope
+
+`pong.py` is an event-driven game script that combines UI menu logic, gameplay simulation, responsive layout, and state transitions.
+
+The game has three runtime phases:
+1. Menu phase (`app.gameStart == False`)
+2. Match phase (`app.gameStart == True` and `app.roundOver == False`)
+3. Round-over freeze (`app.roundOver == True`)
+
+---
+
+## 2) Program Lifecycle Overview
+
+Startup flow:
+1. Imports and constants load.
+2. Helper scaling functions are defined (`sx`, `sy`, `ss`).
+3. All `app.*` state variables are initialized.
+4. Shapes/labels/menu widgets are created.
+5. Functions are defined (helpers, input handlers, game loop).
+6. Initial layout pass runs: `applyResponsiveLayout(app.width, app.height)`.
+7. Menu is shown (`setMenuButtonsVisible(True)`), style is applied.
+8. Main loop starts at `cmu_graphics.run()`.
+
+Event-driven model:
+- Input events call handlers (`onMouseMove`, `onMousePress`, `onKeyPress`, `onKeyRelease`, `onResize`).
+- Frame updates happen in `onStep()`.
+- The framework repeatedly invokes these callbacks based on user input or frame timing.
+
+State transitions:
+- Menu -> Match: click `startBtn` in `onMousePress()`.
+- Match -> Round-over: ball hits left/right goal wall in `onStep()` and calls `endRound(...)`.
+- Round-over -> Match: round timer expires in `onStep()` and calls `resetRound()`.
+- Match -> Menu: press `R` in `onKeyPress()` reset branch.
+
+---
+
+## 3) Global State and Data Model
+
+### Timing and resize state
+Line anchors:
+- `app.prevTime`, `app.dt`: around lines `53-55`
+- `app.prevW`, `app.prevH`: around lines `101-102`
+
+Purpose:
+- `app.dt` holds frame delta time.
+- `app.prevTime` is used to compute the next `dt`.
+- `app.prevW/H` tracks last-known window size for resize math.
+
+### Input state
+Line anchors:
+- Mouse state: around `79-82`
+- Key-hold flags: around `85-88`
+
+Purpose:
+- Mouse sets paddle target in singleplayer.
+- Key flags support smooth movement while keys are held down.
+
+### Match state
+Line anchors:
+- Score label: around `73`
+- Speed and round state: around `93-100`
+- Ball velocity: around `76-77`
+
+Purpose:
+- `app.dx/dy` are current ball velocities.
+- `app.speedTier` tracks speed-up milestones.
+- `app.roundOver`, `app.roundTimer`, `app.roundDelay` control winner-message pause.
+
+### Menu state
+Line anchors:
+- `app.selectedColor`, `app.selectedLevel`: around `58-59`
+- `app.p2IsAI`: around `97`
+
+Purpose:
+- Stores user menu choices used when starting a match.
+
+### Config maps
+Line anchors:
+- `colorOptions`: around `104-109`
+- `levelOptions`: around `112-117`
+- `LEVEL_BTN_TEXT`: around `125-130`
+
+Purpose:
+- `colorOptions` maps choice key -> `(P1 color, P2 color)`.
+- `levelOptions` maps choice key -> max ball speed cap.
+- `LEVEL_BTN_TEXT` controls difficulty button text labels.
+
+---
+
+## 4) Coordinate and Scaling System
+
+Design-space model:
+- Base design coordinates are `DESIGN_W = 2560`, `DESIGN_H = 1440` (around `27-28`).
+- Objects are positioned/sized in design-space and converted to current window-space.
+
+Helpers:
+- `sx(x)` for X conversion (around `31-33`)
+- `sy(y)` for Y conversion (around `36-38`)
+- `ss(v)` for uniform-size conversion (around `41-43`)
+
+Resize update pipeline:
+1. `onResize()` computes scale factor and calls `applyResponsiveLayout(...)` (around `321-341`).
+2. `applyResponsiveLayout(...)` recalculates all positions/sizes (around `217-319`).
+3. `onStep()` includes a fallback check and calls `onResize()` if dimensions changed but event was missed (around `553-555`).
+
+Rule box:
+- If you add a new visual object, do both:
+1. Create it once near object setup.
+2. Reposition/resize it inside `applyResponsiveLayout(...)`.
+
+---
+
+## 5) Rendering and Visibility Model
+
+Menu-only visuals:
+- `menuTitle`
+- Menu buttons and their labels via `setMenuButtonsVisible(...)`
+
+Gameplay-only visuals:
+- `ball`, paddles, borders, goal walls, `counter`
+
+Round-end visuals:
+- `winMsg` or `loseMsg` (temporary)
+
+Visibility transitions:
+- `start(...)` (around `345-373`): shows gameplay visuals, hides menu.
+- `endRound(...)` (around `375-383`): freezes motion and shows winner label.
+- `resetRound(...)` (around `385-398`): hides winner labels and relaunches ball.
+- `onKeyPress('r')` reset branch (around `457-479`): hides gameplay, shows menu.
+
+---
+
+## 6) Input and Control Model
+
+Mouse:
+- Menu: `onMousePress(...)` selects color/level/mode and starts game.
+- Singleplayer gameplay: `onMouseMove(...)` updates `app.mouseTargetY`; `onStep()` smooth-follows that target.
+
+Keyboard:
+- Menu keyboard selection is intentionally disabled (`onKeyPress` returns early when not in game).
+- In gameplay:
+  - `W/S` move P1 (twoplayer mode)
+  - `Up/Down` move P2 (twoplayer mode)
+  - `R` resets to menu
+
+Mode behavior:
+- `app.p2IsAI == True`: P1 mouse-follow + P2 AI.
+- `app.p2IsAI == False`: both paddles controlled by keys.
+
+---
+
+## 7) Physics and Collision Model
+
+Time-step movement:
+- `onStep()` computes `app.dt` each frame and clamps spikes with `min(app.dt, 1/60)`.
+- Ball movement uses velocity * delta time (`ball.centerX += app.dx * app.dt`, etc.).
+
+Paddle bounds:
+- `clampPaddles()` enforces vertical limits so paddles stay in play area.
+
+Collision responses:
+- Paddle hit:
+  - reflect horizontal direction
+  - randomize vertical velocity
+  - move ball outside paddle to avoid sticking
+  - increment score and apply speed logic
+- Top/bottom border hit:
+  - invert vertical direction
+- Goal wall hit:
+  - call `endRound(...)`
+
+Speed system:
+- `increaseSpeed()` raises speed every 10 hits (`counter.value // 10`).
+- `clampSpeed()` enforces selected difficulty max speed.
+- `onResize()` scales active velocity so feel stays consistent after window size changes.
+
+---
+
+## 8) Customization Map
+
+Tune gameplay:
+- Paddle speed: `app.paddleSpeed`, `app.playerPaddleSpeed`, plus `onResize` refresh formula.
+- Ball launch speed: `start(...)` and `resetRound(...)` `app.dx/app.dy` lines.
+- Speed cadence: `increaseSpeed()`.
+- Speed cap policy: `clampSpeed()` and `levelOptions`.
+- Round pause length: `app.roundDelay`.
+
+Tune menu visuals/layout:
+- Button dimensions/gaps/rows in `applyResponsiveLayout(...)` constants:
+  - `colorW/levelW/modeW/startW`
+  - `colorGap/levelGap/modeGap`
+  - `colorRowY/levelRowY/modeRowY/startRowY`
+- Color preview rendering and text in `updateColorButtonPreviews()`.
+
+Add options safely (important):
+- Current creation loops are fixed to `(1, 2, 3)` and `(5, 6, 7, 8)` around `141-147`.
+- Row-centering formulas assume 3 color buttons and 4 level buttons around `276-277`.
+- If option counts change, update both loops and row-centering math together.
+
+---
+
+## 9) Troubleshooting and Debugging Workflow
+
+Common symptoms and where to inspect:
+- Menu/button overlap: `applyResponsiveLayout(...)` row constants and label sizes.
+- Objects not resizing: check object is included in `applyResponsiveLayout(...)`.
+- Menu not re-centering after resize: check `onResize()` and `onStep()` fallback check.
+- Score/speed feels wrong: inspect `increaseSpeed()`, `clampSpeed()`, and launch speeds.
+- Wrong mode behavior: inspect `app.p2IsAI` flow in `onMousePress()` and `onStep()`.
+
+Minimal test loop after edits:
+1. Run `python -m py_compile pong.py`.
+2. Start app and test menu clicks.
+3. Start singleplayer and twoplayer.
+4. Resize window and verify centering/scaling.
+5. Trigger scoring and round-over text.
+6. Press `R` and confirm clean return to menu.
+
+Runtime checklist:
+- Menu centered at startup and after resize.
+- All buttons clickable and style updates visible.
+- Score increases on paddle hits.
+- Speed-up and cap behavior match expectations.
+- Winner label appears centered and resets correctly.
+
+---
+
+## 10) Cross-Reference Footer
+
+For exact per-function internals (purpose, state reads/writes, side effects, risks, modification tips), see:
+- `FunctionDeepDive.txt` in this same folder.
+
+That file is the implementation-level function reference. This file is the architecture map.

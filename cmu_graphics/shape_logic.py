@@ -1,16 +1,25 @@
 import math
 import copy
-from cmu_graphics import cmu_graphics
-from cmu_graphics import utils
+if __package__:
+    from . import cmu_graphics
+    from . import utils
+    from .libs import cairo_loader as cairo
+    from .libs import pygame_loader as pygame
+    from .libs import webrequest
+else:
+    import os as _os
+    import sys as _sys
+    _HERE = _os.path.dirname(_os.path.abspath(__file__))
+    if _HERE not in _sys.path:
+        _sys.path.insert(0, _HERE)
+    import __main__ as cmu_graphics
+    import utils
+    from libs import cairo_loader as cairo
+    from libs import pygame_loader as pygame
+    from libs import webrequest
 
 ### ZIPFILE VERSION ###
-from cmu_graphics.libs import cairo_loader as cairo
-from cmu_graphics.libs import pygame_loader as pygame
-
 ### END ZIPFILE VERSION ###
-
-
-from cmu_graphics.libs import webrequest
 from io import BytesIO
 import array
 import sys

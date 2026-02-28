@@ -3,8 +3,16 @@ import os
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide'
 
-from cmu_graphics.shape_logic import TRANSLATED_KEY_NAMES, _ShapeMetaclass
-from cmu_graphics import shape_logic
+if __package__:
+    from .shape_logic import TRANSLATED_KEY_NAMES, _ShapeMetaclass
+    from . import shape_logic
+else:
+    import sys as _sys
+    _HERE = os.path.dirname(os.path.abspath(__file__))
+    if _HERE not in _sys.path:
+        _sys.path.insert(0, _HERE)
+    from shape_logic import TRANSLATED_KEY_NAMES, _ShapeMetaclass
+    import shape_logic
 
 
 class Signal:
@@ -1603,7 +1611,10 @@ from datetime import datetime
 from datetime import timedelta
 import json
 import subprocess
-from cmu_graphics.libs import webrequest
+if __package__:
+    from .libs import webrequest
+else:
+    from libs import webrequest
 import __main__
 
 
@@ -1693,12 +1704,17 @@ if 'CMU_GRAPHICS_DEBUG' in __main__.__dict__:
 import math
 
 ### ZIPFILE VERSION ###
-from cmu_graphics.libs import cairo_loader as cairo
-
+if __package__:
+    from .libs import cairo_loader as cairo
+else:
+    from libs import cairo_loader as cairo
 ### END ZIPFILE VERSION ###
 
 from random import *
-from cmu_graphics.utils import *
+if __package__:
+    from .utils import *
+else:
+    from utils import *
 import atexit
 import threading
 import traceback
@@ -1706,8 +1722,10 @@ import traceback
 DRAWING_LOCK = threading.RLock()
 
 ### ZIPFILE VERSION ###
-from cmu_graphics.libs import pygame_loader as pygame
-
+if __package__:
+    from .libs import pygame_loader as pygame
+else:
+    from libs import pygame_loader as pygame
 ### END ZIPFILE VERSION ###
 
 
