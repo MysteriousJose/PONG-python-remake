@@ -89,19 +89,13 @@ levelOptions = {
 ### GUI LEVEL SELECT ###
 # Start/menu labels. Hidden when game starts.
 menuTitle = Label("PONG", 1280, 288, size=256, fill="black")
-colorText = Label("Press 1-3 to Select Color Scheme", 1280, 468, fill='black', size=76.8)
-levelText = Label("Press 5-8 to Select Difficulty", 1280, 576, fill='black', size=76.8)
-modeText = Label("Press 9 for Singleplayer, 0 for Twoplayer", 1280, 630, fill='black', size=64)
-startText = Label("Press Enter to Start", 1280, 684, fill="black", size=76.7)
-shcemeShow = Label(
-    '1 is SkyBlue and Salmon, 2 is Lime and Orange, 3 is White and Black',
-    1280, 864, fill='Black', size=76.8
-)
-diffShow = Label(
-    '5 is Easy, 6 is Medium, 7 is Hard, 8 is Infinite Speed Scaling',
-    1280, 936, fill='Black', size=76.8
-)
-modeShow = Label('Mode: Singleplayer', 1280, 1008, fill='Black', size=76.8)
+colorText = Label("Press 1-3 to Select Color Scheme", 1280, 468, fill='black', size=76)
+levelText = Label("Press 5-8 to Select Difficulty", 1280, 576, fill='black', size=76)
+modeText = Label("Press 9 for Singleplayer, 0 for Twoplayer", 1280, 670, fill='black', size=76)
+startText = Label("Press Enter to Start", 1280, 1200, fill="black", size=76)
+shcemeShow = Label('1 is SkyBlue and Salmon, 2 is Lime and Orange, 3 is White and Black', 1280, 850, fill='Black', size=76)
+diffShow = Label('5 is Easy, 6 is Medium, 7 is Hard, 8 is Infinite Speed Scaling',1280, 946, fill='Black', size=76)
+modeShow = Label('Mode: Singleplayer', 1280, 1048, fill='Black', size=76)
 
 
 ### START SCRIPT ###
