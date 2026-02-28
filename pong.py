@@ -42,6 +42,11 @@ def ss(v):
     # Uniform scaling helper for sizes/radii: uses the smaller axis scale factor.
     return v * min(app.width / DESIGN_W, app.height / DESIGN_H)
 
+
+def speedUnit():
+    # Centralized speed unit so BASE_FPS and scale are defined in one place.
+    return BASE_FPS * ss(1)
+
 ### APP VARIABLES ###
 # Global app setup.
 app.background = 'white'
@@ -114,6 +119,13 @@ levelOptions = {
     6: 29,    # Medium
     7: 33,    # Hard
     8: 9999   # Infinite speed scaling
+}
+
+KEY_HELD_ATTR = {
+    'up': 'upHeld',
+    'down': 'downHeld',
+    'w': 'wHeld',
+    's': 'sHeld'
 }
 
 
@@ -203,6 +215,30 @@ def setMenuButtonsVisible(visible):
     modeTwoLbl.visible = visible
     startBtn.visible = visible
     startLbl.visible = visible
+
+
+def setGameplayVisible(visible):
+    # Show/hide all gameplay-only objects in one place.
+    ball.visible = visible
+    app.p1.visible = visible
+    app.p2.visible = visible
+    counter.visible = visible
+    app.border1.visible = visible
+    app.border2.visible = visible
+    app.backWall.visible = visible
+    app.frontWall.visible = visible
+
+
+def serveBall(resetPaddles=False):
+    # Place ball at center and relaunch with a randomized direction.
+    ball.centerX = sx(1280)
+    ball.centerY = sy(720)
+    if resetPaddles:
+        app.p1.centerY = sy(720)
+        app.p2.centerY = sy(720)
+        app.mouseTargetY = app.p1.centerY
+    app.dx = random.choice([-9, 9]) * speedUnit()  # Start left or right.
+    app.dy = random.randrange(-2, 3) * speedUnit()
 
 
 def clampPaddles():
@@ -345,23 +381,13 @@ def onResize():
 def start(color1, color2, levelSelect):
     """Start a new match from the menu selections."""
     # Show gameplay objects.
-    ball.visible = True
-    app.p1.visible = True
+    setGameplayVisible(True)
     app.p1.fill = color1
-    app.p2.visible = True
     app.p2.fill = color2
-    app.border1.visible = True
-    app.border2.visible = True
-    app.backWall.visible = True
-    app.frontWall.visible = True
-    counter.visible = True
 
     # Reset ball and launch with random horizontal direction.
-    ball.centerX = sx(1280)
-    ball.centerY = sy(720)
-    app.dx = random.choice([-9, 9]) * BASE_FPS * ss(1)  # Start left or right.
-    app.dy = random.randrange(-2, 3) * BASE_FPS * ss(1)
-    app.maxSpeed = levelSelect * BASE_FPS * ss(1)
+    serveBall()
+    app.maxSpeed = levelSelect * speedUnit()
     app.roundOver = False
     app.roundTimer = 0
     loseMsg.visible = False
@@ -389,13 +415,8 @@ def resetRound():
     loseMsg.visible = False
     app.roundOver = False
     app.roundTimer = 0
-    ball.centerX = sx(1280)
-    ball.centerY = sy(720)
-    app.p1.centerY = sy(720)
-    app.p2.centerY = sy(720)
-    app.mouseTargetY = app.p1.centerY
-    app.dx = random.choice([-9, 9]) * BASE_FPS * ss(1)  # Start left or right.
-    app.dy = random.randrange(-2, 3) * BASE_FPS * ss(1)
+    counter.value = 0
+    serveBall(resetPaddles=True)
 
 
 ### MOVEMENT OF THE PADDLES ###
@@ -462,14 +483,7 @@ def onKeyPress(key):
         app.dx = 0
         app.dy = 0
         app.background = 'white'
-        ball.visible = False
-        app.p1.visible = False
-        app.p2.visible = False
-        counter.visible = False
-        app.border1.visible = False
-        app.border2.visible = False
-        app.backWall.visible = False
-        app.frontWall.visible = False
+        setGameplayVisible(False)
         winMsg.visible = False
         loseMsg.visible = False
 
@@ -477,27 +491,15 @@ def onKeyPress(key):
         menuTitle.visible = True
         setMenuButtonsVisible(True)
         updateMenuButtonStyles()
-    if key == 'up':
-        app.upHeld = True
-    if key == 'down':
-        app.downHeld = True
-    if key == 'w':
-        app.wHeld = True
-    if key == 's':
-        app.sHeld = True
+    if key in KEY_HELD_ATTR:
+        setattr(app, KEY_HELD_ATTR[key], True)
 
 
 def onKeyRelease(key):
     """Stop movement on key release by clearing hold flags."""
     # Clear key-held flags on release.
-    if key == 'up':
-        app.upHeld = False
-    if key == 'down':
-        app.downHeld = False
-    if key == 'w':
-        app.wHeld = False
-    if key == 's':
-        app.sHeld = False
+    if key in KEY_HELD_ATTR:
+        setattr(app, KEY_HELD_ATTR[key], False)
 
 
 ### INCREASE SPEED EVERY 10 SCORE ###
@@ -510,14 +512,14 @@ def increaseSpeed():
 
         # Increase speed while preserving direction.
         if app.dx > 0:
-            app.dx += BASE_FPS * ss(1)
+            app.dx += speedUnit()
         else:
-            app.dx -= BASE_FPS * ss(1)
+            app.dx -= speedUnit()
 
         if app.dy > 0:
-            app.dy += BASE_FPS * ss(1)
+            app.dy += speedUnit()
         else:
-            app.dy -= BASE_FPS * ss(1)
+            app.dy -= speedUnit()
 
 
 # Keep speed from increasing beyond selected level max.
