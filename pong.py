@@ -58,6 +58,7 @@ app.gameStart = False  # False = in menu, True = match started.
 app.prevTime = time.perf_counter()
 app.dt = 1/app.stepsPerSecond  # Time between steps, used for frame-rate independent movement if desired.
 BASE_FPS = 144  # Used for frame-rate independent movement if desired.
+app.gamePaused = False
 
 # Menu selections (defaults).
 app.selectedColor = 1
@@ -71,12 +72,13 @@ app.border1 = Rect(0, sy(-30), app.width, sy(40), fill='black', visible=False) #
 app.border2 = Rect(0, sy(1430), app.width, sy(40), visible=False) # Bottom border (also used for ball bounce collision).
 app.backWall = Rect(0, 0, ss(10), app.height, visible=False)      # Left goal wall.
 app.frontWall = Rect(app.width - ss(10), 0, ss(10), app.height, visible=False)  # Right goal wall.
-
+paused = Label("PAUSED", sx(1280), sy(720), size=ss(110), visible=False, fill='red')
 # UI labels for round outcome and score.
 loseMsg = Label("P2 Win!", sx(1280), sy(720), size=ss(110), visible=False, fill='green')
 winMsg = Label("P1 Win!", sx(1280), sy(720), size=ss(110), visible=False, fill='green')
 counter = Label(0, sx(1280), sy(60), size=ss(56), visible=False)
-
+p1counter = Label(0, sx(1280 - 300), sy(60), size=ss(60), visible=False, bold=True)
+p2counter = Label(0, sx(1280 + 300), sy(60), size=ss(60), visible=False, bold=True)
 # Ball velocity (pixels per step).
 app.dx = 0
 app.dy = 0
@@ -227,6 +229,8 @@ def setGameplayVisible(visible):
     app.border2.visible = visible
     app.backWall.visible = visible
     app.frontWall.visible = visible
+    p1counter.visible = visible
+    p2counter.visible = visible
 
 
 def serveBall(resetPaddles=False):
@@ -384,7 +388,8 @@ def start(color1, color2, levelSelect):
     setGameplayVisible(True)
     app.p1.fill = color1
     app.p2.fill = color2
-
+    p1counter.fill = color1
+    p2counter.fill = color2
     # Reset ball and launch with random horizontal direction.
     serveBall()
     app.maxSpeed = levelSelect * speedUnit()
@@ -473,7 +478,10 @@ def onKeyPress(key):
     # Menu is mouse-only.
     if not app.gameStart:
         return
-
+    if key == 'p':
+        app.gamePaused = True
+    if key == 'o':
+        app.gamePaused = False
     # In game: set key-held flags for continuous movement.
     if key == 'r':
         # Reset game state and return to menu.
@@ -559,6 +567,10 @@ def onStep():
     if not app.gameStart:
         # While in menu state, skip gameplay simulation entirely.
         return
+    paused.visible = app.gamePaused
+    if app.gamePaused:
+        # Skip gameplay simulation while paused, but keep app running.
+        return
 
     # During round-end freeze, wait then auto-reset.
     if app.roundOver:
@@ -629,8 +641,10 @@ def onStep():
 
     # Goal wall collisions: show winner text.
     if ball.hitsShape(app.backWall):
-        endRound(False)
+        p2counter.value += 1
+        endRound(True)
     elif ball.hitsShape(app.frontWall):
+        p1counter.value += 1
         endRound(True)
 
 
