@@ -1,0 +1,196 @@
+# PONG Edit Cheatsheet (pong.py only)
+
+Scope: This guide covers only `pong.py` in this project, not `cmu_graphics` engine internals.
+
+## 1) How Scaling Works (Read First)
+
+This file uses design-space math so UI and gameplay scale with window size.
+
+- `sx(x)`: scale X positions from design width to current window width.
+- `sy(y)`: scale Y positions from design height to current window height.
+- `ss(v)`: scale sizes (font/radius/thickness) using the smaller axis scale.
+
+Where to look:
+
+- `sx/sy/ss` helpers: around `pong.py` lines `31-43`
+- `applyResponsiveLayout(...)`: around lines `217-319`
+- `onResize()`: around lines `321-341`
+
+Rule: If you add or move UI/game objects, update `applyResponsiveLayout(...)` too.
+
+---
+
+## 2) Quick Location Map (What to Edit for X)
+
+| What You Want to Change | Where to Edit |
+|---|---|
+| Window start size | `BASE_W`, `BASE_H` around lines `23-24` |
+| Design resolution baseline | `DESIGN_W`, `DESIGN_H` around lines `27-28` |
+| Color schemes (P1/P2 colors) | `colorOptions` around lines `104-109` |
+| Difficulty speed caps | `levelOptions` around lines `112-117` |
+| Difficulty button labels | `LEVEL_BTN_TEXT` around lines `125-130` |
+| Color button preview text formatting | `updateColorButtonPreviews()` around lines `177-190` |
+| Menu button spacing/size/row positions | layout constants in `applyResponsiveLayout(...)` around lines `265-277` |
+| Winner text size/position | `loseMsg`, `winMsg` around lines `71-72`, plus responsive update around `259-260` |
+| Score counter size/position | `counter` around line `73`, plus responsive update around `261` |
+| Ball/paddle/wall sizes and anchors | object creation around lines `62-68` and responsive geometry around `234-256` |
+| Paddle speed tuning | `app.paddleSpeed`, `app.playerPaddleSpeed` around `95-97`, resize refresh around `338-339` |
+| AI chase speed behavior | `AI_SPEED` line in `onStep` around `596` |
+| Round-end pause duration | `app.roundDelay` around line `100` |
+| Controls and input flow | `onMouseMove`, `onMousePress`, `onKeyPress`, `onKeyRelease` around lines `401-500` |
+
+---
+
+## 3) Menu Customization Recipes
+
+### Change color names/colors shown on menu
+
+1. Edit `colorOptions` values.
+2. Example: `1: ('skyBlue', 'salmon')` controls both gameplay paddle colors and button previews.
+3. Preview text updates automatically through `updateColorButtonPreviews()` using `prettyColorName(...)`.
+
+### Change difficulty names/caps
+
+1. Edit `LEVEL_BTN_TEXT` to rename menu labels.
+2. Edit `levelOptions` to change actual max speed caps.
+3. Keep keys aligned between both maps (for example key `5` should exist in both).
+
+### Move menu rows farther apart
+
+1. Edit `colorRowY`, `levelRowY`, `modeRowY`, `startRowY` in `applyResponsiveLayout(...)`.
+2. Larger Y values move rows lower.
+3. Keep using `sy(...)` values so spacing still scales.
+
+### Make buttons larger or smaller
+
+1. Edit `colorW`, `levelW`, `modeW`, `startW` in `applyResponsiveLayout(...)`.
+2. If text clips, reduce label sizes (`lbl.size = ss(...)`) or widen button widths.
+3. Keep values in `sx/sy/ss` units, not fixed raw pixels.
+
+---
+
+## 4) Gameplay Tuning Recipes
+
+### Faster/slower paddles
+
+- Edit base speeds:
+  - `app.paddleSpeed` (singleplayer mouse-follow speed)
+  - `app.playerPaddleSpeed` (W/S and Up/Down speed)
+- Also update matching formulas in `onResize()` so resize behavior stays consistent.
+
+### Faster/slower initial ball
+
+- Edit launch values in `start(...)` and `resetRound(...)`:
+  - `app.dx = random.choice([-9, 9]) * BASE_FPS * ss(1)`
+  - `app.dy = random.randrange(-2, 3) * BASE_FPS * ss(1)`
+
+### Change speed-up cadence
+
+- Edit `increaseSpeed()` around lines `503+`:
+  - cadence trigger uses `newTier = counter.value // 10`
+  - speed increment amount uses `BASE_FPS * ss(1)`
+
+### Change max speed cap behavior
+
+- Edit `clampSpeed()` around lines `524+`.
+- This function enforces `app.maxSpeed` from selected difficulty.
+
+### Change round-end pause
+
+- Edit `app.roundDelay` around line `100`.
+
+---
+
+## 5) Visibility State Guide
+
+### Menu state
+
+- Visible: `menuTitle` and menu buttons/labels (`setMenuButtonsVisible(True)`).
+- Hidden: gameplay shapes, score label, win labels.
+
+### Match state
+
+- `start(...)` shows gameplay shapes and `counter`.
+- `start(...)` hides menu title/buttons with `menuTitle.visible = False` and `setMenuButtonsVisible(False)`.
+
+### Round-end state
+
+- `endRound(...)` freezes motion and shows one winner label (`winMsg` or `loseMsg`).
+- `resetRound(...)` hides winner labels and relaunches.
+
+### Return-to-menu flow
+
+- In `onKeyPress`, key `r` reset block hides gameplay objects and shows menu again.
+
+---
+
+## 6) If You Add More Options (Important Caveat)
+
+Current loops are fixed:
+
+- Color options loop uses `(1, 2, 3)`
+- Difficulty options loop uses `(5, 6, 7, 8)`
+
+If you add or remove options:
+
+1. Update button creation loops.
+2. Update responsive row math that assumes counts:
+   - `3 * colorW` and `2 * colorGap`
+   - `4 * levelW` and `3 * levelGap`
+3. Keep click handling map-driven and ensure each new key exists in the corresponding dict.
+
+---
+
+## 7) Common Mistakes + Fixes
+
+- Mistake: Add UI but forget `applyResponsiveLayout(...)`.
+  - Fix: Add size/position updates there.
+
+- Mistake: Use hardcoded raw pixels for new UI.
+  - Fix: Convert to `sx/sy/ss`.
+
+- Mistake: Color button text does not fit.
+  - Fix: Increase `colorW` or reduce color label `ss(...)` size.
+
+- Mistake: Menu not centered after resize.
+  - Fix: Check `applyResponsiveLayout(...)`, `onResize()`, and on-step resize fallback.
+
+---
+
+## 8) Safe Edit Workflow
+
+1. Change one thing at a time.
+2. Run:
+   - `python -m py_compile pong.py`
+3. Launch the game and test:
+   - startup menu layout
+   - resized window layout
+   - singleplayer flow
+   - twoplayer flow
+4. Confirm reset key (`R`) returns cleanly to menu.
+
+---
+
+## 9) Public APIs / Interfaces / Types
+
+- No public API/type changes are required for normal `pong.py` edits.
+- This cheatsheet is documentation-only guidance.
+
+---
+
+## 10) Test Cases and Scenarios (Cheatsheet Quality)
+
+1. Change `colorOptions[1]` and verify color preview text/fill updates.
+2. Change `modeRowY` and verify vertical row spacing moves correctly.
+3. Increase `counter` size and verify it still scales on resize.
+4. Run `python -m py_compile pong.py` after each sample change.
+5. Resize the window and verify menu rows + `PONG` title stay centered.
+
+---
+
+## 11) Assumptions and Defaults
+
+- Scope is `pong.py` only.
+- Detail level is quick map + examples.
+- Line numbers in this file are approximate anchors and may shift.
+- Function/variable names are the source of truth if line numbers drift.

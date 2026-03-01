@@ -1,0 +1,998 @@
+﻿# Function Deep Dive (pong.py)
+
+Notes:
+- Line anchors are approximate and can shift after edits.
+- Function/variable names are the source of truth.
+- Scope is `pong.py` only.
+
+## 1) `sx(x)`
+
+1. Purpose
+Convert a design-space X value into current-window X space.
+
+2. Trigger/Callers
+Called wherever X positions/sizes are initialized or recalculated (object creation, `applyResponsiveLayout`, `start`, `resetRound`).
+
+3. Inputs
+- `x` (number): X value in design coordinates (`DESIGN_W` space).
+
+4. Reads from state
+- `app.width`
+- `DESIGN_W`
+
+5. Writes to state
+- None.
+
+6. Side effects on shapes/labels
+- None directly.
+
+7. Step-by-step logic
+1. Compute scale ratio `app.width / DESIGN_W`.
+2. Multiply incoming `x` by that ratio.
+3. Return scaled X value.
+
+8. Invariants and assumptions
+- Assumes `DESIGN_W > 0`.
+- Assumes `app.width` reflects current window width.
+
+9. Common modification points
+- Rarely modified. Usually keep formula unchanged.
+
+10. Risks if changed incorrectly
+- All X alignment breaks (menu centering, paddle anchors, wall positions).
+
+11. Practical example edit
+- If changing design baseline width, update `DESIGN_W` and keep this formula intact.
+
+12. Line anchor in `pong.py`
+- Around line `31`.
+
+---
+
+## 2) `sy(y)`
+
+1. Purpose
+Convert a design-space Y value into current-window Y space.
+
+2. Trigger/Callers
+Used in object setup and resize/layout updates.
+
+3. Inputs
+- `y` (number): Y value in design coordinates (`DESIGN_H` space).
+
+4. Reads from state
+- `app.height`
+- `DESIGN_H`
+
+5. Writes to state
+- None.
+
+6. Side effects on shapes/labels
+- None directly.
+
+7. Step-by-step logic
+1. Compute `app.height / DESIGN_H`.
+2. Multiply incoming `y` by that ratio.
+3. Return scaled Y value.
+
+8. Invariants and assumptions
+- Assumes `DESIGN_H > 0`.
+
+9. Common modification points
+- Usually unchanged; only baseline constants change.
+
+10. Risks if changed incorrectly
+- Vertical spacing/centering and boundaries break.
+
+11. Practical example edit
+- Keep function as-is; edit `DESIGN_H` if project baseline changes.
+
+12. Line anchor in `pong.py`
+- Around line `36`.
+
+---
+
+## 3) `ss(v)`
+
+1. Purpose
+Uniformly scale sizes using the smaller axis scale so circles/fonts/thickness remain visually proportional.
+
+2. Trigger/Callers
+Used for radius, font size, border widths, paddle thickness/speed scaling constants.
+
+3. Inputs
+- `v` (number): design-space size value.
+
+4. Reads from state
+- `app.width`, `app.height`
+- `DESIGN_W`, `DESIGN_H`
+
+5. Writes to state
+- None.
+
+6. Side effects on shapes/labels
+- None directly.
+
+7. Step-by-step logic
+1. Compute X scale and Y scale.
+2. Choose `min(xScale, yScale)`.
+3. Return `v * minScale`.
+
+8. Invariants and assumptions
+- Keeps size elements from stretching disproportionately.
+
+9. Common modification points
+- Rarely changed. Central to consistent look.
+
+10. Risks if changed incorrectly
+- Text and shapes may stretch non-uniformly or clip.
+
+11. Practical example edit
+- If you want truly axis-specific size behavior, do not change `ss`; use `sx/sy` at call sites instead.
+
+12. Line anchor in `pong.py`
+- Around line `41`.
+
+---
+
+## 4) `pointInRect(px, py, rect)`
+
+1. Purpose
+Hit-test helper to decide if a click is inside a menu button rectangle.
+
+2. Trigger/Callers
+Called only by `onMousePress(...)`.
+
+3. Inputs
+- `px`, `py`: click position.
+- `rect`: target `Rect` button.
+
+4. Reads from state
+- Reads shape properties: `rect.left/right/top/bottom`.
+
+5. Writes to state
+- None.
+
+6. Side effects on shapes/labels
+- None.
+
+7. Step-by-step logic
+1. Check `left <= px <= right`.
+2. Check `top <= py <= bottom`.
+3. Return combined boolean.
+
+8. Invariants and assumptions
+- Assumes button geometry is current and valid.
+
+9. Common modification points
+- Could be replaced by `rect.hits(px, py)` style if desired, but current helper is clear.
+
+10. Risks if changed incorrectly
+- Menu buttons become hard/impossible to click.
+
+11. Practical example edit
+- Add hover effects by using this test in a future `onMouseMove` hover pass.
+
+12. Line anchor in `pong.py`
+- Around line `153`.
+
+---
+
+## 5) `updateMenuButtonStyles()`
+
+1. Purpose
+Apply visual state to menu buttons based on selected color, difficulty, and mode.
+
+2. Trigger/Callers
+Called by `applyResponsiveLayout`, `onMousePress`, reset branch in `onKeyPress`, and startup init.
+
+3. Inputs
+- None.
+
+4. Reads from state
+- `app.selectedColor`
+- `app.selectedLevel`
+- `app.p2IsAI`
+- `colorButtons`, `levelButtons`, mode button objects
+
+5. Writes to state
+- No `app.*` writes.
+
+6. Side effects on shapes/labels
+- Mutates button visual properties (`fill`, `border`, `borderWidth`) for:
+  - color buttons
+  - difficulty buttons
+  - mode buttons
+
+7. Step-by-step logic
+1. Loop color buttons and set thick border if selected.
+2. Loop level buttons and set `khaki` fill if selected.
+3. Set single/two-player mode button fills and border widths based on `app.p2IsAI`.
+
+8. Invariants and assumptions
+- Selection keys exist in button maps.
+
+9. Common modification points
+- Selection colors, border thickness, hover/active style enhancements.
+
+10. Risks if changed incorrectly
+- UI can display wrong selected option even if internal state is correct.
+
+11. Practical example edit
+- Change selected difficulty fill from `khaki` to `lightBlue` by editing this function only.
+
+12. Line anchor in `pong.py`
+- Around line `158`.
+
+---
+
+## 6) `updateColorButtonPreviews()`
+
+1. Purpose
+Render color preview buttons dynamically from `colorOptions`, including readable label text.
+
+2. Trigger/Callers
+Called from `applyResponsiveLayout(...)`.
+
+3. Inputs
+- None.
+
+4. Reads from state
+- `colorOptions`
+- `colorButtons`
+
+5. Writes to state
+- No `app.*` writes.
+
+6. Side effects on shapes/labels
+- Updates each color button label value.
+- Sets each color button fill (solid or gradient).
+
+7. Step-by-step logic
+1. Local helper `prettyColorName(...)` splits camelCase into words and capitalizes.
+2. For each color option:
+   - read `(p1Color, p2Color)`
+   - set label to `Pretty1/Pretty2`
+   - set fill to solid if equal; else gradient left-to-right.
+
+8. Invariants and assumptions
+- `colorOptions` keys match `colorButtons` keys.
+- Color names are valid CMU Graphics colors.
+
+9. Common modification points
+- Label formatting (separator, capitalization rules).
+- Gradient direction.
+
+10. Risks if changed incorrectly
+- Button previews drift from actual gameplay colors.
+
+11. Practical example edit
+- Show shorter labels by replacing names with abbreviations in this function.
+
+12. Line anchor in `pong.py`
+- Around line `177`.
+
+---
+
+## 7) `setMenuButtonsVisible(visible)`
+
+1. Purpose
+Single place to show/hide all menu widgets.
+
+2. Trigger/Callers
+Called by `start(...)`, reset branch in `onKeyPress`, and startup init.
+
+3. Inputs
+- `visible` (bool).
+
+4. Reads from state
+- `colorButtons`, `levelButtons`, mode buttons/labels, start button/label.
+
+5. Writes to state
+- No `app.*` writes.
+
+6. Side effects on shapes/labels
+- Sets `.visible` on all menu button rectangles and labels.
+
+7. Step-by-step logic
+1. Loop color button pairs and set visibility.
+2. Loop level button pairs and set visibility.
+3. Set visibility of mode/start widgets.
+
+8. Invariants and assumptions
+- Keeps visibility toggling consistent and centralized.
+
+9. Common modification points
+- Add new menu widgets and include them here.
+
+10. Risks if changed incorrectly
+- Some menu elements remain visible during gameplay or disappear unexpectedly.
+
+11. Practical example edit
+- Add a new button and include its `.visible` toggles in this function.
+
+12. Line anchor in `pong.py`
+- Around line `192`.
+
+---
+
+## 8) `clampPaddles()`
+
+1. Purpose
+Keep paddle center Y values within playable vertical bounds.
+
+2. Trigger/Callers
+Called by `applyResponsiveLayout(...)` and `onStep()`.
+
+3. Inputs
+- None.
+
+4. Reads from state
+- `app.p1.centerY`, `app.p2.centerY`
+- `sy(...)` for min/max bound conversion
+
+5. Writes to state
+- Writes clamped values to `app.p1.centerY` and `app.p2.centerY`.
+
+6. Side effects on shapes/labels
+- Moves paddle positions if out of bounds.
+
+7. Step-by-step logic
+1. Compute `minY` and `maxY` in scaled coordinates.
+2. Clamp each paddle centerY to `[minY, maxY]`.
+
+8. Invariants and assumptions
+- Bound constants are tuned for current paddle dimensions.
+
+9. Common modification points
+- Adjust bound constants if paddle height or wall layout changes.
+
+10. Risks if changed incorrectly
+- Paddles can go off-screen or clip into walls.
+
+11. Practical example edit
+- If paddles are taller, increase `minY` and decrease `maxY` to keep full paddle visible.
+
+12. Line anchor in `pong.py`
+- Around line `208`.
+
+---
+
+## 9) `applyResponsiveLayout(oldW=None, oldH=None)`
+
+1. Purpose
+Recalculate all object geometry for current window size while preserving dynamic object relative positions.
+
+2. Trigger/Callers
+Called by `onResize(...)` and once at startup.
+
+3. Inputs
+- `oldW`, `oldH` previous window dimensions (optional).
+
+4. Reads from state
+- Current geometry for ball/paddles.
+- `app.width`, `app.height`.
+- Design constants.
+- Menu/state config maps and button collections.
+
+5. Writes to state
+- No direct app scalar writes, but updates shape fields broadly.
+
+6. Side effects on shapes/labels
+- Resizes/repositions gameplay objects, labels, menu buttons, and menu text.
+- Repositions ball/paddles proportionally.
+- Calls `clampPaddles()`, `updateColorButtonPreviews()`, `updateMenuButtonStyles()`.
+
+7. Step-by-step logic
+1. Capture relative positions (`ballRX/ballRY/p1RY/p2RY`) from old dimensions.
+2. Recompute gameplay object sizes/anchors.
+3. Recompute label sizes/positions.
+4. Compute menu layout constants (widths, gaps, rows, centered row-left formulas).
+5. Layout color row, level row, mode row, start button.
+6. Restore proportional dynamic positions to new window.
+7. Clamp paddles and refresh menu previews/styles.
+
+8. Invariants and assumptions
+- Must include every visual object that needs resize responsiveness.
+- Row-centering formulas assume fixed button counts unless updated.
+
+9. Common modification points
+- Menu spacing and sizing constants.
+- Label sizes/positions.
+- Paddles/ball dimensions.
+
+10. Risks if changed incorrectly
+- Off-center UI, stretched objects, misaligned click areas, gameplay jump on resize.
+
+11. Practical example edit
+- Move mode row lower by increasing `modeRowY`; all mode widgets follow automatically.
+
+12. Line anchor in `pong.py`
+- Around line `217`.
+
+---
+
+## 10) `onResize()`
+
+1. Purpose
+Handle window resize events by relayout + speed scaling.
+
+2. Trigger/Callers
+Called by framework on resize and by `onStep()` fallback check.
+
+3. Inputs
+- None in this script (framework updates `app.width/height` first).
+
+4. Reads from state
+- `app.prevW`, `app.prevH`
+- `app.width`, `app.height`
+- `DESIGN_W`, `DESIGN_H`
+- motion fields `app.dx`, `app.dy`, `app.maxSpeed`
+
+5. Writes to state
+- `app.dx`, `app.dy`, `app.maxSpeed` (scaled)
+- `app.paddleSpeed`, `app.playerPaddleSpeed`
+- `app.prevW`, `app.prevH`
+
+6. Side effects on shapes/labels
+- Indirectly updates all geometry via `applyResponsiveLayout(...)`.
+
+7. Step-by-step logic
+1. Read old/new dimensions and compute old/new scale.
+2. Compute `speedFactor = newScale / oldScale`.
+3. Run full layout refresh.
+4. Scale active velocity/speed fields by `speedFactor`.
+5. Recompute paddle speeds from new scale.
+6. Store new dimensions as previous.
+
+8. Invariants and assumptions
+- Keeps gameplay “feel” consistent after resize.
+
+9. Common modification points
+- If tuning movement model, keep this scaling in sync with base speed definitions.
+
+10. Risks if changed incorrectly
+- Ball can become too fast/slow after resize; controls feel inconsistent.
+
+11. Practical example edit
+- If base control speed changes, update both initial `app.playerPaddleSpeed` and this function’s resize assignment.
+
+12. Line anchor in `pong.py`
+- Around line `321`.
+
+---
+
+## 11) `start(color1, color2, levelSelect)`
+
+1. Purpose
+Enter match state using selected menu options.
+
+2. Trigger/Callers
+Called from `onMousePress(...)` when start button is clicked.
+
+3. Inputs
+- `color1`, `color2`: paddle colors from `colorOptions`.
+- `levelSelect`: speed cap from `levelOptions`.
+
+4. Reads from state
+- `BASE_FPS`, `ss(1)`
+
+5. Writes to state
+- `app.dx`, `app.dy`, `app.maxSpeed`
+- `app.roundOver`, `app.roundTimer`
+- Visibility flags for several shapes
+
+6. Side effects on shapes/labels
+- Shows gameplay objects and score counter.
+- Applies paddle fills.
+- Hides menu title/buttons.
+- Sets background to dark gray.
+
+7. Step-by-step logic
+1. Enable gameplay visuals.
+2. Place ball at center.
+3. Set random horizontal launch and random small vertical launch.
+4. Set max speed from difficulty.
+5. Clear round-over/winner text.
+6. Hide menu UI and change background.
+
+8. Invariants and assumptions
+- Caller already set `app.gameStart = True` after calling this.
+
+9. Common modification points
+- Initial launch speed range.
+- Start background color.
+
+10. Risks if changed incorrectly
+- Match may start with invisible objects or invalid velocity.
+
+11. Practical example edit
+- Make serve always start right by replacing `random.choice([-9, 9])` with `9`.
+
+12. Line anchor in `pong.py`
+- Around line `345`.
+
+---
+
+## 12) `endRound(p1Won)`
+
+1. Purpose
+Freeze gameplay and show winner label for a short delay.
+
+2. Trigger/Callers
+Called from goal-wall collision handling in `onStep()`.
+
+3. Inputs
+- `p1Won` (bool).
+
+4. Reads from state
+- `app.roundDelay`
+
+5. Writes to state
+- `app.roundOver = True`
+- `app.roundTimer = app.roundDelay`
+- `app.dx = 0`, `app.dy = 0`
+
+6. Side effects on shapes/labels
+- Shows `winMsg` or `loseMsg`.
+
+7. Step-by-step logic
+1. Mark round as over.
+2. Load delay timer.
+3. Stop ball motion.
+4. Show exactly one winner label.
+
+8. Invariants and assumptions
+- Round reset is handled later by `onStep()` timer check.
+
+9. Common modification points
+- Can add sound effects or flash logic here.
+
+10. Risks if changed incorrectly
+- Round may not pause correctly or winner label may stick.
+
+11. Practical example edit
+- Show both labels for debugging by setting both `.visible = True` temporarily.
+
+12. Line anchor in `pong.py`
+- Around line `375`.
+
+---
+
+## 13) `resetRound()`
+
+1. Purpose
+Restart rally after round-over delay.
+
+2. Trigger/Callers
+Called from `onStep()` when `app.roundTimer <= 0`.
+
+3. Inputs
+- None.
+
+4. Reads from state
+- `BASE_FPS`, `ss(1)`
+
+5. Writes to state
+- `app.roundOver`, `app.roundTimer`
+- `app.dx`, `app.dy`
+- `app.mouseTargetY`
+- paddle and ball center positions
+
+6. Side effects on shapes/labels
+- Hides winner labels.
+- Centers ball and paddles.
+
+7. Step-by-step logic
+1. Hide winner labels.
+2. Clear round-over state.
+3. Reset positions to center.
+4. Sync mouse target to P1 center.
+5. Relaunch ball with random direction/vertical component.
+
+8. Invariants and assumptions
+- Score is not reset here (score persists across rallies).
+
+9. Common modification points
+- Add serve direction logic based on last scorer.
+
+10. Risks if changed incorrectly
+- Ball can relaunch from wrong location or paddles can desync.
+
+11. Practical example edit
+- Force neutral serve by setting `app.dy = 0`.
+
+12. Line anchor in `pong.py`
+- Around line `385`.
+
+---
+
+## 14) `onMouseMove(mouseX, mouseY)`
+
+1. Purpose
+Track mouse coordinates and set target Y for smooth paddle follow.
+
+2. Trigger/Callers
+Framework mouse-move event.
+
+3. Inputs
+- `mouseX`, `mouseY`.
+
+4. Reads from state
+- None.
+
+5. Writes to state
+- `app.mouseX`, `app.mouseY`, `app.mouseTargetY`.
+
+6. Side effects on shapes/labels
+- None immediate (movement occurs later in `onStep()`).
+
+7. Step-by-step logic
+1. Save raw mouse coordinates.
+2. Set desired paddle target Y.
+
+8. Invariants and assumptions
+- In twoplayer mode, target is ignored for actual control.
+
+9. Common modification points
+- Add smoothing filter to target before writing.
+
+10. Risks if changed incorrectly
+- Singleplayer paddle responsiveness can feel laggy/jittery.
+
+11. Practical example edit
+- Add dead-zone so tiny mouse movement does not update target.
+
+12. Line anchor in `pong.py`
+- Around line `402`.
+
+---
+
+## 15) `onMousePress(mouseX, mouseY)`
+
+1. Purpose
+Handle all menu click interactions.
+
+2. Trigger/Callers
+Framework mouse-press event.
+
+3. Inputs
+- `mouseX`, `mouseY`.
+
+4. Reads from state
+- `app.gameStart`
+- button geometry via `pointInRect`
+- config maps `colorOptions`, `levelOptions`
+
+5. Writes to state
+- `app.selectedColor`
+- `app.selectedLevel`
+- `app.p2IsAI`
+- `app.gameStart` (when start clicked)
+
+6. Side effects on shapes/labels
+- Calls style refresh and may call `start(...)`.
+
+7. Step-by-step logic
+1. If game already running, ignore menu clicks.
+2. Test color buttons and update selection if hit.
+3. Test level buttons and update selection if hit.
+4. Test mode buttons and update mode if hit.
+5. Test start button: resolve selected config values, call `start(...)`, set `app.gameStart = True`.
+
+8. Invariants and assumptions
+- Early returns stop after first match to avoid double-actions.
+
+9. Common modification points
+- Add new menu button behavior branch.
+
+10. Risks if changed incorrectly
+- Click priority bugs or accidental multiple actions per click.
+
+11. Practical example edit
+- Add a “Random Colors” button branch before start-button branch.
+
+12. Line anchor in `pong.py`
+- Around line `415`.
+
+---
+
+## 16) `onKeyPress(key)`
+
+1. Purpose
+In gameplay state, handle reset key and movement key-hold flags.
+
+2. Trigger/Callers
+Framework key-press event.
+
+3. Inputs
+- `key` (string).
+
+4. Reads from state
+- `app.gameStart`.
+
+5. Writes to state
+- On reset: many game/menu state fields including visibility and motion fields.
+- On movement keys: `app.upHeld`, `app.downHeld`, `app.wHeld`, `app.sHeld`.
+
+6. Side effects on shapes/labels
+- Reset branch hides gameplay visuals and shows menu visuals.
+
+7. Step-by-step logic
+1. If in menu, return immediately (menu is mouse-only).
+2. If `key == 'r'`: reset match/session state and show menu.
+3. Set held flags for directional keys.
+
+8. Invariants and assumptions
+- Counter reset happens only on full reset, not between rallies.
+
+9. Common modification points
+- Add pause toggle key.
+- Add alternate key bindings.
+
+10. Risks if changed incorrectly
+- Stuck key states, partial reset bugs, hidden/visible mismatch.
+
+11. Practical example edit
+- Add `if key == 'p': app.paused = not app.paused` style toggle (with supporting logic).
+
+12. Line anchor in `pong.py`
+- Around line `450`.
+
+---
+
+## 17) `onKeyRelease(key)`
+
+1. Purpose
+Clear movement key-hold flags when keys are released.
+
+2. Trigger/Callers
+Framework key-release event.
+
+3. Inputs
+- `key` (string).
+
+4. Reads from state
+- None.
+
+5. Writes to state
+- `app.upHeld`, `app.downHeld`, `app.wHeld`, `app.sHeld`.
+
+6. Side effects on shapes/labels
+- None direct.
+
+7. Step-by-step logic
+- Check each supported key and set corresponding held flag to `False`.
+
+8. Invariants and assumptions
+- Required for smooth hold behavior; prevents “stuck movement.”
+
+9. Common modification points
+- Mirror any new key added in `onKeyPress`.
+
+10. Risks if changed incorrectly
+- Paddle can continue moving after key release.
+
+11. Practical example edit
+- If adding `I/K` controls, clear their hold flags here too.
+
+12. Line anchor in `pong.py`
+- Around line `490`.
+
+---
+
+## 18) `increaseSpeed()`
+
+1. Purpose
+Increase ball speed at score milestones (every 10 hits) while preserving direction.
+
+2. Trigger/Callers
+Called after paddle collisions in `onStep()`.
+
+3. Inputs
+- None.
+
+4. Reads from state
+- `counter.value`
+- `app.speedTier`
+- `app.dx`, `app.dy`
+
+5. Writes to state
+- `app.speedTier`
+- `app.dx`, `app.dy`
+
+6. Side effects on shapes/labels
+- None direct (affects motion next frame).
+
+7. Step-by-step logic
+1. Compute `newTier = counter.value // 10`.
+2. If tier advanced:
+   - update `app.speedTier`
+   - increment/decrement `app.dx` by one unit step preserving sign
+   - increment/decrement `app.dy` similarly.
+
+8. Invariants and assumptions
+- Tier increases once per threshold crossing.
+
+9. Common modification points
+- Change cadence divisor `10`.
+- Change increment step magnitude.
+
+10. Risks if changed incorrectly
+- Speed jumps too often or direction flips unexpectedly.
+
+11. Practical example edit
+- Speed up every 5 hits by changing `// 10` to `// 5`.
+
+12. Line anchor in `pong.py`
+- Around line `504`.
+
+---
+
+## 19) `clampSpeed()`
+
+1. Purpose
+Enforce velocity component limits so ball speed cannot exceed difficulty cap.
+
+2. Trigger/Callers
+Called after `increaseSpeed()` in paddle-collision branches.
+
+3. Inputs
+- None.
+
+4. Reads from state
+- `app.dx`, `app.dy`, `app.maxSpeed`.
+
+5. Writes to state
+- Potentially rewrites `app.dx` and/or `app.dy`.
+
+6. Side effects on shapes/labels
+- None direct.
+
+7. Step-by-step logic
+- Clamp each component independently to range `[-app.maxSpeed, app.maxSpeed]`.
+
+8. Invariants and assumptions
+- Component clamp, not vector-magnitude clamp.
+
+9. Common modification points
+- Replace component clamp with magnitude clamp if you want strict vector speed.
+
+10. Risks if changed incorrectly
+- Difficulty caps no longer respected.
+
+11. Practical example edit
+- Add lower bound floor if you never want very slow vertical movement.
+
+12. Line anchor in `pong.py`
+- Around line `524`.
+
+---
+
+## 20) `onStep()`
+
+1. Purpose
+Main frame simulation loop for timing, controls, movement, collisions, scoring, and round transitions.
+
+2. Trigger/Callers
+Framework step/tick callback at `app.stepsPerSecond`.
+
+3. Inputs
+- None.
+
+4. Reads from state
+- Most runtime state fields: timing, mode, hold flags, speeds, positions, round state.
+
+5. Writes to state
+- `app.dt`, `app.prevTime`
+- Potentially `app.dx`, `app.dy`
+- `app.roundTimer`
+- Paddle/ball positions
+- `counter.value` on paddle hits
+
+6. Side effects on shapes/labels
+- Moves paddles and ball.
+- Triggers round-end labels via `endRound(...)`.
+
+7. Step-by-step logic
+1. Compute and clamp `dt`.
+2. Fallback resize check; call `onResize()` if dimensions changed.
+3. If menu state, return.
+4. If round-over state, count down timer and call `resetRound()` when expired, then return.
+5. Apply control model:
+   - singleplayer: smooth mouse-follow for P1
+   - twoplayer: key-held movement for both paddles
+6. Move ball by velocity * `dt`.
+7. If singleplayer, update AI paddle toward ball with capped step.
+8. Clamp paddles inside bounds.
+9. Handle paddle collisions:
+   - reflect horizontal direction
+   - randomize vertical velocity
+   - nudge ball out of paddle
+   - increment score
+   - call `increaseSpeed()` and `clampSpeed()`
+10. Handle top/bottom collisions by reflecting vertical velocity.
+11. Handle goal wall collisions and call `endRound(...)`.
+
+8. Invariants and assumptions
+- `dt` clamping reduces extreme jump behavior on frame spikes.
+- Collision order matters for gameplay feel.
+
+9. Common modification points
+- AI behavior.
+- Collision response randomness.
+- Control smoothing.
+- Scoring rules.
+
+10. Risks if changed incorrectly
+- Hard-to-debug regressions: tunneling, jitter, frozen states, incorrect scoring.
+
+11. Practical example edit
+- Make AI easier by setting `AI_SPEED = app.paddleSpeed * 0.75`.
+
+12. Line anchor in `pong.py`
+- Around line `537`.
+
+---
+
+# Function Dependency Map
+
+- `onMousePress` -> `pointInRect`, `updateMenuButtonStyles`, `start`
+- `onKeyPress` -> `setMenuButtonsVisible`, `updateMenuButtonStyles`
+- `onStep` -> `onResize` (fallback), `resetRound`, `clampPaddles`, `increaseSpeed`, `clampSpeed`, `endRound`
+- `onResize` -> `applyResponsiveLayout`
+- `applyResponsiveLayout` -> `clampPaddles`, `updateColorButtonPreviews`, `updateMenuButtonStyles`
+
+Helpers used across layout/game setup:
+- `sx`, `sy`, `ss` are used by object creation and multiple runtime functions.
+
+---
+
+# Event-to-Function Map
+
+- Mouse move event -> `onMouseMove`
+- Mouse press event -> `onMousePress`
+- Key press event -> `onKeyPress`
+- Key release event -> `onKeyRelease`
+- Window resize event -> `onResize`
+- Frame step event -> `onStep`
+
+---
+
+# State Mutation Index (`app.*`)
+
+- `app.dt`, `app.prevTime`:
+  - written by `onStep`
+- `app.prevW`, `app.prevH`:
+  - written by `onResize`
+- `app.dx`, `app.dy`:
+  - written by `start`, `endRound`, `resetRound`, `onResize`, `increaseSpeed`, `clampSpeed`, `onStep` collision branches, reset branch in `onKeyPress`
+- `app.maxSpeed`:
+  - written by `start`, `onResize`
+- `app.paddleSpeed`, `app.playerPaddleSpeed`:
+  - written by `onResize` (and initialized globally)
+- `app.roundOver`, `app.roundTimer`:
+  - written by `start`, `endRound`, `resetRound`, read/updated by `onStep`
+- `app.gameStart`:
+  - written by `onMousePress` (start click) and `onKeyPress` (reset)
+- `app.speedTier`:
+  - written by `increaseSpeed`, reset in `onKeyPress`
+- `app.selectedColor`, `app.selectedLevel`:
+  - written by `onMousePress`
+- `app.p2IsAI`:
+  - written by `onMousePress`
+- `app.mouseX`, `app.mouseY`, `app.mouseTargetY`:
+  - written by `onMouseMove`; `app.mouseTargetY` also reset in `resetRound`
+- `app.wHeld`, `app.sHeld`, `app.upHeld`, `app.downHeld`:
+  - written by `onKeyPress` and `onKeyRelease`
+
+Shape/label property mutation occurs in:
+- `applyResponsiveLayout`
+- `start`
+- `endRound`
+- `resetRound`
+- `setMenuButtonsVisible`
+- `updateMenuButtonStyles`
+- `updateColorButtonPreviews`
+- `onKeyPress` reset branch
+- `onStep`
