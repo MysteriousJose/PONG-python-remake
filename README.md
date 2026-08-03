@@ -1,4 +1,6 @@
-YOU MUST FOLLOW THE CMU LICENSE AGREEMENT
+YOU MUST FOLLOW THE CMU LICENSE AGREEMENT (LICENSE.txt)
+
+Yes this was AI assisted *NOT* AI written.
 
 This is just a fun project I made while having nothing else to do. 
 
