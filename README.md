@@ -71,7 +71,6 @@ PONG/
 ├── pong.py
 ├── requirements.txt
 ├── README.md
-├── LICENSE
 │
 └── THIRD_PARTY_LICENSES/
     └── CMU_GRAPHICS_LICENSE.txt
@@ -97,9 +96,4 @@ This project is not affiliated with Atari or any official Pong release.
 
 AI tools were used as a development aid for portions of this project. The code, design decisions, testing, and final implementation were created and reviewed by the project author.
 
-## License
-
-This project is licensed under the MIT License.
-
-See the `LICENSE` file for details.
 
