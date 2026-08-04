@@ -26,9 +26,19 @@ git clone https://github.com/MysteriousJose/PONG.git
 cd PONG
 ```
 
-### 2. Install dependencies
+## Requirements
 
-Install the required Python packages:
+* Python 3.x
+* CMU Graphics
+
+  
+### 2. Install Requirements
+
+Install Python from:
+https://www.python.org/downloads/
+
+Then install project dependencies:
+
 
 ```bash
 pip install -r requirements.txt
@@ -40,10 +50,6 @@ pip install -r requirements.txt
 python pong.py
 ```
 
-## Requirements
-
-* Python 3.x
-* CMU Graphics
 
 The required Python packages are listed in:
 
