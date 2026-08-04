@@ -22,8 +22,8 @@ This project was created as an educational programming project to practice game 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/MysteriousJose/PONG.git
-cd PONG
+git clone https://github.com/MysteriousJose/PONG-python-remake.git
+cd PONG-python-remake
 ```
 
 ## Requirements
