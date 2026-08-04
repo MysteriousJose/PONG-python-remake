@@ -1,10 +1,105 @@
-YOU MUST FOLLOW THE CMU LICENSE AGREEMENT (THIRD_PARTY_LICENSES/CMU_GRAPHICS_LICENSE.txt)
+# PONG - Python Pong Remake
 
-Yes this was AI assisted *NOT* AI written.
+A fan-made recreation of the classic Pong arcade game built entirely in Python using the CMU Graphics library.
 
-This is just a fun project I made while having nothing else to do. 
+This project was created as an educational programming project to practice game development concepts such as animation, collision detection, keyboard input, and game logic.
 
-If anyone finds this and actually uses it please know I will not be religiously maintaining it, and I may or may not update anything.
+## Features
 
-This is made entirely with Python, along with the CMU_Graphics library. 
-To run the .py in any code editor and run the program, MAKE SURE that the cmu_graphics FOLDER is in the same DIRECTORY as the .py or you WILL get errors
+* Two-player Pong gameplay
+* Real-time ball movement and paddle controls
+* Collision detection between:
+
+  * Ball and paddles
+  * Ball and walls
+* Score tracking
+* Increasing difficulty as the game progresses
+* Simple and clean graphical interface
+
+
+## Installation
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/MysteriousJose/PONG.git
+cd PONG
+```
+
+### 2. Install dependencies
+
+Install the required Python packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Run the game
+
+```bash
+python pong.py
+```
+
+## Requirements
+
+* Python 3.x
+* CMU Graphics
+
+The required Python packages are listed in:
+
+```
+requirements.txt
+```
+
+## Controls
+
+### Player 1
+
+* W - Move paddle up
+* S - Move paddle down
+
+### Player 2
+
+* Up Arrow - Move paddle up
+* Down Arrow - Move paddle down
+
+## Project Structure
+
+```
+PONG/
+│
+├── pong.py
+├── requirements.txt
+├── README.md
+├── LICENSE
+│
+└── THIRD_PARTY_LICENSES/
+    └── CMU_GRAPHICS_LICENSE.txt
+```
+
+## Credits
+
+This project uses **CMU Graphics** by CMU CS Academy.
+
+CMU Graphics is a third-party library licensed under the BSD 3-Clause License. The license for CMU Graphics is included in:
+
+```
+THIRD_PARTY_LICENSES/CMU_GRAPHICS_LICENSE.txt
+```
+
+## Disclaimer
+
+This is a fan-made Pong-inspired project created for educational purposes.
+
+This project is not affiliated with Atari or any official Pong release.
+
+## AI Assistance Disclosure
+
+AI tools were used as a development aid for portions of this project. The code, design decisions, testing, and final implementation were created and reviewed by the project author.
+
+## License
+
+This project is licensed under the MIT License.
+
+See the `LICENSE` file for details.
+
