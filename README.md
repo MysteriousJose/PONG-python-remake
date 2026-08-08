@@ -33,8 +33,8 @@ cd PONG-python-remake
 
 ## Requirements
 
-* Python 3.x
 * CMU Graphics
+* Python 3.13.x
 
   
 ### 2. Install Requirements
@@ -42,11 +42,9 @@ cd PONG-python-remake
 Install Python from:
 https://www.python.org/downloads/
 
-Then install project dependencies:
-
-
+Then install project dependencies by running: 
 ```bash
-pip install -r requirements.txt
+./setup.sh
 ```
 
 ### 3. Run the game
