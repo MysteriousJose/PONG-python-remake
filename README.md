@@ -25,6 +25,11 @@ This project was created as an educational programming project to practice game 
 git clone https://github.com/MysteriousJose/PONG-python-remake.git
 cd PONG-python-remake
 ```
+#Then run 
+```bash
+./setup.sh
+```
+#This will apply some compatability fixes.
 
 ## Requirements
 
